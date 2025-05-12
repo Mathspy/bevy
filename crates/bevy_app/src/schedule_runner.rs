@@ -1,7 +1,7 @@
 use crate::{
     app::{App, AppExit},
     plugin::Plugin,
-    PluginsState,
+    AppExitWithHotReload, PluginsState,
 };
 use bevy_platform_support::time::Instant;
 use core::time::Duration;
@@ -89,20 +89,21 @@ impl Plugin for ScheduleRunnerPlugin {
                     app.update();
 
                     if let Some(exit) = app.should_exit() {
-                        return exit;
+                        // return exit;
                     }
 
-                    AppExit::Success
+                    todo!()
+                    // AppExit::Success
                 }
                 RunMode::Loop { wait } => {
                     let tick = move |app: &mut App,
                                      _wait: Option<Duration>|
-                          -> Result<Option<Duration>, AppExit> {
+                          -> Result<Option<Duration>, AppExitWithHotReload> {
                         let start_time = Instant::now();
 
                         app.update();
 
-                        if let Some(exit) = app.should_exit() {
+                        if let Some(exit) = app.should_finish() {
                             return Err(exit);
                         };
 

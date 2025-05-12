@@ -175,7 +175,7 @@ impl App {
     /// # Panics
     ///
     /// Panics if not all plugins have been built.
-    pub fn run(&mut self) -> AppExit {
+    pub fn run(&mut self) -> AppExitWithHotReload {
         #[cfg(feature = "trace")]
         let _bevy_app_run_span = info_span!("bevy_app").entered();
         if self.is_building_plugins() {
@@ -214,9 +214,16 @@ impl App {
     /// App::new()
     ///     .set_runner(my_runner);
     /// ```
-    pub fn set_runner(&mut self, f: impl FnOnce(App) -> AppExit + 'static) -> &mut Self {
+    pub fn set_runner(
+        &mut self,
+        f: impl FnOnce(App) -> AppExitWithHotReload + 'static,
+    ) -> &mut Self {
         self.runner = Box::new(f);
         self
+    }
+
+    pub fn get_runner_mut(&mut self) -> &mut RunnerFn {
+        &mut self.runner
     }
 
     /// Returns the state of all plugins. This is usually called by the event loop, but can be
@@ -1286,6 +1293,31 @@ impl App {
         None
     }
 
+    pub fn should_finish(&mut self) -> Option<AppExitWithHotReload> {
+        let mut reader = EventCursor::default();
+
+        let events = self.world().get_resource::<Events<AppExit>>()?;
+        let mut events = reader.read(events);
+
+        if events.len() != 0 {
+            return Some(
+                events
+                    .find(|exit| exit.is_finished())
+                    .cloned()
+                    .map(|exit| match exit {
+                        AppExit::Success => AppExitWithHotReload::Success,
+                        AppExit::Error(non_zero) => AppExitWithHotReload::Error(non_zero),
+                        AppExit::HotReload => {
+                            AppExitWithHotReload::HotReload(core::mem::replace(self, App::empty()))
+                        }
+                    })
+                    .unwrap_or(AppExitWithHotReload::Success),
+            );
+        }
+
+        None
+    }
+
     /// Spawns an [`Observer`] entity, which will watch for and respond to the given event.
     ///
     /// # Examples
@@ -1326,9 +1358,9 @@ impl App {
     }
 }
 
-type RunnerFn = Box<dyn FnOnce(App) -> AppExit>;
+type RunnerFn = Box<dyn FnOnce(App) -> AppExitWithHotReload>;
 
-fn run_once(mut app: App) -> AppExit {
+fn run_once(mut app: App) -> AppExitWithHotReload {
     while app.plugins_state() == PluginsState::Adding {
         #[cfg(all(not(target_arch = "wasm32"), feature = "bevy_tasks"))]
         bevy_tasks::tick_global_task_pools_on_main_thread();
@@ -1338,7 +1370,7 @@ fn run_once(mut app: App) -> AppExit {
 
     app.update();
 
-    app.should_exit().unwrap_or(AppExit::Success)
+    app.should_finish().unwrap_or(AppExitWithHotReload::Success)
 }
 
 /// An event that indicates the [`App`] should exit. If one or more of these are present at the end of an update,
@@ -1359,6 +1391,17 @@ pub enum AppExit {
     /// The [`App`] experienced an unhandleable error.
     /// Holds the exit code we expect our app to return.
     Error(NonZero<u8>),
+    HotReload,
+}
+
+#[derive(Debug)]
+pub enum AppExitWithHotReload {
+    /// [`App`] exited without any problems.
+    Success,
+    /// The [`App`] experienced an unhandleable error.
+    /// Holds the exit code we expect our app to return.
+    Error(NonZero<u8>),
+    HotReload(App),
 }
 
 impl AppExit {
@@ -1378,6 +1421,11 @@ impl AppExit {
     #[must_use]
     pub const fn is_error(&self) -> bool {
         matches!(self, AppExit::Error(_))
+    }
+
+    #[must_use]
+    pub const fn is_finished(&self) -> bool {
+        matches!(self, AppExit::Error(_) | AppExit::HotReload)
     }
 
     /// Creates a [`AppExit`] from a code.
@@ -1407,6 +1455,7 @@ impl Termination for AppExit {
             AppExit::Success => ExitCode::SUCCESS,
             // We leave logging an error to our users
             AppExit::Error(value) => ExitCode::from(value.get()),
+            AppExit::HotReload => unreachable!(),
         }
     }
 }

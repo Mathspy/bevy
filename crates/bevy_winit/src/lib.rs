@@ -120,33 +120,35 @@ impl<T: Event> Plugin for WinitPlugin<T> {
             event_loop_builder.with_android_app(bevy_window::ANDROID_APP.get().expect(msg).clone());
         }
 
-        app.init_non_send_resource::<WinitWindows>()
-            .init_resource::<WinitMonitors>()
-            .init_resource::<WinitSettings>()
-            .add_event::<RawWinitWindowEvent>()
-            .set_runner(winit_runner::<T>)
-            .add_systems(
-                Last,
-                (
-                    // `exit_on_all_closed` only checks if windows exist but doesn't access data,
-                    // so we don't need to care about its ordering relative to `changed_windows`
-                    changed_windows.ambiguous_with(exit_on_all_closed),
-                    despawn_windows,
-                    check_keyboard_focus_lost,
-                )
-                    .chain(),
-            );
+        todo!();
 
-        app.add_plugins(AccessKitPlugin);
-        app.add_plugins(cursor::CursorPlugin);
+        // app.init_non_send_resource::<WinitWindows>()
+        //     .init_resource::<WinitMonitors>()
+        //     .init_resource::<WinitSettings>()
+        //     .add_event::<RawWinitWindowEvent>()
+        //     .set_runner(winit_runner::<T>)
+        //     .add_systems(
+        //         Last,
+        //         (
+        //             // `exit_on_all_closed` only checks if windows exist but doesn't access data,
+        //             // so we don't need to care about its ordering relative to `changed_windows`
+        //             changed_windows.ambiguous_with(exit_on_all_closed),
+        //             despawn_windows,
+        //             check_keyboard_focus_lost,
+        //         )
+        //             .chain(),
+        //     );
 
-        let event_loop = event_loop_builder
-            .build()
-            .expect("Failed to build event loop");
+        // app.add_plugins(AccessKitPlugin);
+        // app.add_plugins(cursor::CursorPlugin);
 
-        // `winit`'s windows are bound to the event loop that created them, so the event loop must
-        // be inserted as a resource here to pass it onto the runner.
-        app.insert_non_send_resource(event_loop);
+        // let event_loop = event_loop_builder
+        //     .build()
+        //     .expect("Failed to build event loop");
+
+        // // `winit`'s windows are bound to the event loop that created them, so the event loop must
+        // // be inserted as a resource here to pass it onto the runner.
+        // app.insert_non_send_resource(event_loop);
     }
 }
 
