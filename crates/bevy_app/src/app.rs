@@ -122,7 +122,7 @@ impl Default for App {
                 .in_set(bevy_ecs::event::EventUpdateSystems)
                 .run_if(bevy_ecs::event::event_update_condition),
         );
-        app.add_event::<AppExit>();
+        app.add_event::<AppExit>().add_event::<AppReload>();
 
         app
     }
@@ -1470,6 +1470,26 @@ impl Termination for AppExit {
         }
     }
 }
+
+/// An event to notify the [`App`]'s runner that the app is available for reload
+///
+/// This event doesn't make about any assumptions about how it is used; it's implementation agnostic
+/// and can be used to handle hot patching or full state reloads.
+///
+/// Reload plugin developers should send this event when a reload is available and set an
+/// appropriate [`AppReloader`] that can be called by the runners to reload the app
+///
+/// Plugin developers working on custom [runners](App::set_runner) should detect this event and
+/// react to it by calling [`AppReloader`] with the current [`App`]
+#[derive(Event, Debug, Clone, Default, PartialEq, Eq)]
+pub struct AppReload;
+
+/// A resource holding a function that takes in an [`App`] and modifies it
+///
+/// This resource works in tandum with [`AppReload`] to allow plugins to notify an [`App`]'s
+/// runner that a reload is available and how to handle that reload
+#[derive(Resource)]
+pub struct AppReloader(pub Box<dyn Fn(&mut App) + Send + Sync>);
 
 #[cfg(test)]
 mod tests {
