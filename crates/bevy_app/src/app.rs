@@ -1304,6 +1304,34 @@ impl App {
         None
     }
 
+    /// Determines if an [`AppReload`] was raised while a valid [`AppReloader`] is present
+    ///
+    /// If one was raised it will call the [`AppReloader`] and update itself to become the app
+    /// returned after the reload
+    pub fn handle_reload(&mut self) {
+        if let Some((mut events, reloader)) = self
+            .world_mut()
+            .remove_resource::<Events<AppReload>>()
+            .and_then(|events| {
+                if let Some(reloader) = self.world_mut().remove_resource::<AppReloader>() {
+                    Some((events, reloader))
+                } else {
+                    self.world_mut().insert_resource(events);
+                    None
+                }
+            })
+        {
+            if !events.is_empty() {
+                (reloader.0)(self);
+
+                events.clear();
+            }
+
+            self.world_mut().insert_resource(events);
+            self.world_mut().insert_resource(reloader);
+        }
+    }
+
     /// Spawns an [`Observer`] entity, which will watch for and respond to the given event.
     ///
     /// # Examples
