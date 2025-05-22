@@ -775,6 +775,7 @@ impl<T: Event> WinitAppRunnerState<T> {
 
         if self.app.plugins_state() == PluginsState::Cleaned {
             self.app.update();
+            self.app.handle_reload();
         }
     }
 
