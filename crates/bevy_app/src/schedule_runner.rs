@@ -101,6 +101,7 @@ impl Plugin for ScheduleRunnerPlugin {
                         let start_time = Instant::now();
 
                         app.update();
+                        app.handle_reload();
 
                         if let Some(exit) = app.should_exit() {
                             return Err(exit);
