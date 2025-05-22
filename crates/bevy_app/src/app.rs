@@ -1519,6 +1519,14 @@ pub struct AppReload;
 #[derive(Resource)]
 pub struct AppReloader(pub Box<dyn Fn(&mut App) + Send + Sync>);
 
+/// A resource that represents that this app which contains it has already been initialized at least once
+///
+/// This allow plugins to choose not to initialize some resources during a reload, this isn't
+/// just an optimization but required for plugins such as winit that contain data which cannot be
+/// initialized twice
+#[derive(Resource, Default, Debug)]
+pub struct IsInitialized;
+
 #[cfg(test)]
 mod tests {
     use core::marker::PhantomData;
