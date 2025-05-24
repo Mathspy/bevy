@@ -651,13 +651,15 @@ impl<T: Event> WinitAppRunnerState<T> {
             // If no windows exist, this will evaluate to `true`.
             let all_invisible = windows.iter().all(|w| !w.1.visible);
 
+            let mut reloaded = false;
+
             // Not redrawing, but the timeout elapsed.
             //
             // Additional condition for Windows OS.
             // If no windows are visible, redraw calls will never succeed, which results in no app update calls being performed.
             // This is a temporary solution, full solution is mentioned here: https://github.com/bevyengine/bevy/issues/1343#issuecomment-770091684
             if !self.ran_update_since_last_redraw || all_invisible {
-                self.run_app_update();
+                reloaded = self.run_app_update();
                 #[cfg(feature = "custom_cursor")]
                 self.update_cursors(event_loop);
                 #[cfg(not(feature = "custom_cursor"))]
@@ -665,6 +667,12 @@ impl<T: Event> WinitAppRunnerState<T> {
                 self.ran_update_since_last_redraw = true;
             } else {
                 self.redraw_requested = true;
+            }
+
+            // If the app has been reloaded it's possible that the SystemState is no longer valid,
+            // if the modified app contains a new world. We will refresh it if the app was reloaded
+            if reloaded {
+                focused_windows_state = SystemState::new(self.world_mut());
             }
 
             // Running the app may have changed the WinitSettings resource, so we have to re-extract it.
@@ -768,15 +776,26 @@ impl<T: Event> WinitAppRunnerState<T> {
         handle_event && self.lifecycle.is_active()
     }
 
-    fn run_app_update(&mut self) {
+    /// Returns whether or not a reload occured
+    fn run_app_update(&mut self) -> bool {
         self.reset_on_update();
 
         self.forward_bevy_events();
 
         if self.app.plugins_state() == PluginsState::Cleaned {
             self.app.update();
-            self.app.handle_reload();
+            let reloaded = self.app.handle_reload();
+
+            // If the app has been reloaded it's possible that the SystemState is no longer valid,
+            // if the modified app contains a new world. We will refresh it if the app was reloaded
+            if reloaded {
+                self.event_writer_system_state = SystemState::new(self.app.world_mut());
+            }
+
+            return reloaded;
         }
+
+        false
     }
 
     fn forward_bevy_events(&mut self) {
