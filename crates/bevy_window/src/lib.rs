@@ -51,7 +51,7 @@ pub mod prelude {
     };
 }
 
-use bevy_app::prelude::*;
+use bevy_app::{prelude::*, IsInitialized};
 
 impl Default for WindowPlugin {
     fn default() -> Self {
@@ -122,10 +122,12 @@ impl Plugin for WindowPlugin {
             .add_event::<AppLifecycle>();
 
         if let Some(primary_window) = &self.primary_window {
-            app.world_mut().spawn(primary_window.clone()).insert((
-                PrimaryWindow,
-                RawHandleWrapperHolder(Arc::new(Mutex::new(None))),
-            ));
+            if app.world().get_resource::<IsInitialized>().is_none() {
+                app.world_mut().spawn(primary_window.clone()).insert((
+                    PrimaryWindow,
+                    RawHandleWrapperHolder(Arc::new(Mutex::new(None))),
+                ));
+            }
         }
 
         match self.exit_condition {

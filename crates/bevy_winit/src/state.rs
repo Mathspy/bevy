@@ -673,6 +673,23 @@ impl<T: Event> WinitAppRunnerState<T> {
             // if the modified app contains a new world. We will refresh it if the app was reloaded
             if reloaded {
                 focused_windows_state = SystemState::new(self.world_mut());
+
+                // TODO: This is hack is because we don't have a simple way of moving entities between world
+                let mut query = self
+                    .world_mut()
+                    .query_filtered::<(Entity, &Window), With<Window>>();
+                let windows = query
+                    .iter(self.world())
+                    .map(|(entity, window)| (entity, window.clone()))
+                    .collect::<Vec<(Entity, Window)>>();
+                for (entity, window) in windows {
+                    self.world_mut().entity_mut(entity).insert((
+                        CachedWindow {
+                            window: window.clone(),
+                        },
+                        WinitWindowPressedKeys::default(),
+                    ));
+                }
             }
 
             // Running the app may have changed the WinitSettings resource, so we have to re-extract it.

@@ -357,6 +357,14 @@ impl WinitWindows {
         self.winit_to_entity.remove(&winit_id);
         self.windows.remove(&winit_id)
     }
+
+    pub fn swap_entity(&mut self, old_entity: Entity, new_entity: Entity) {
+        let winit_id = self.entity_to_winit.remove(&old_entity).unwrap();
+        self.winit_to_entity.entry(winit_id).and_modify(|entity| {
+            *entity = new_entity;
+        });
+        self.entity_to_winit.insert(new_entity, winit_id);
+    }
 }
 
 /// Returns some [`winit::monitor::VideoModeHandle`] given a [`MonitorHandle`] and a
