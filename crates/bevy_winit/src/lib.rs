@@ -55,7 +55,7 @@ mod winit_monitors;
 mod winit_windows;
 
 thread_local! {
-    static WINIT_WINDOWS: RefCell<WinitWindows> = const { RefCell::new(WinitWindows::new()) };
+    pub static WINIT_WINDOWS: RefCell<WinitWindows> = const { RefCell::new(WinitWindows::new()) };
 }
 
 /// A [`Plugin`] that uses `winit` to create and manage windows, and receive window and input
