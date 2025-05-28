@@ -52,7 +52,7 @@ pub use tracing::{
 };
 pub use tracing_subscriber;
 
-use bevy_app::{App, Plugin};
+use bevy_app::{App, IsInitialized, Plugin};
 use tracing_log::LogTracer;
 use tracing_subscriber::{
     filter::{FromEnvError, ParseError},
@@ -399,17 +399,19 @@ impl Plugin for LogPlugin {
             finished_subscriber = subscriber.with(tracing_oslog::OsLogger::default());
         }
 
-        let logger_already_set = LogTracer::init().is_err();
-        let subscriber_already_set =
-            tracing::subscriber::set_global_default(finished_subscriber).is_err();
+        if app.world().get_resource::<IsInitialized>().is_none() {
+            let logger_already_set = LogTracer::init().is_err();
+            let subscriber_already_set =
+                tracing::subscriber::set_global_default(finished_subscriber).is_err();
 
-        match (logger_already_set, subscriber_already_set) {
-            (true, true) => error!(
-                "Could not set global logger and tracing subscriber as they are already set. Consider disabling LogPlugin."
-            ),
-            (true, false) => error!("Could not set global logger as it is already set. Consider disabling LogPlugin."),
-            (false, true) => error!("Could not set global tracing subscriber as it is already set. Consider disabling LogPlugin."),
-            (false, false) => (),
+            match (logger_already_set, subscriber_already_set) {
+                (true, true) => error!(
+                    "Could not set global logger and tracing subscriber as they are already set. Consider disabling LogPlugin."
+                ),
+                (true, false) => error!("Could not set global logger as it is already set. Consider disabling LogPlugin."),
+                (false, true) => error!("Could not set global tracing subscriber as it is already set. Consider disabling LogPlugin."),
+                (false, false) => (),
+            }
         }
     }
 }
